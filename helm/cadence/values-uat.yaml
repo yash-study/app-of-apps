@@ -35,7 +35,7 @@ server:
           pluginName: "mysql"
           host: "10.3.65.5"
           port: 3306
-          database: "cadence"
+          database: "cadence1"
           user: "cadence"
           existingSecret: "cadence-mysql"
           maxConns: 20
@@ -48,7 +48,7 @@ server:
           pluginName: "mysql"
           host: "10.3.65.5"
           port: 3306
-          database: "cadence_visibility"
+          database: "cadence_visibility1"
           user: "cadence"
           existingSecret: "cadence-mysql"
           maxConns: 10
