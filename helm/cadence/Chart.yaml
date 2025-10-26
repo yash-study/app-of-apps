@@ -1,0 +1,28 @@
+# Helm Chart Metadata
+# This file defines the Cadence Helm chart package information
+apiVersion: v2
+name: cadence
+description: Uber Cadence - Distributed, scalable, durable workflow orchestration engine for microservices
+type: application
+version: 1.0.0
+appVersion: "0.25.0"
+
+# Keywords for chart discovery
+keywords:
+  - cadence
+  - workflow
+  - orchestration
+  - temporal
+  - microservices
+  - distributed-systems
+
+# Project URLs
+home: https://cadenceworkflow.io/
+sources:
+  - https://github.com/uber/cadence
+  - https://github.com/your-org/dailytumour-cadence
+
+# Maintainers
+maintainers:
+  - name: Platform Team
+    email: platform@dailytumour.com

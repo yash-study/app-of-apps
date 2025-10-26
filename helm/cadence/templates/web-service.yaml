@@ -1,0 +1,21 @@
+{{- if .Values.web.enabled }}
+# Web UI Service
+# ClusterIP service exposing the web deployment
+# Access via kubectl port-forward or Istio VirtualService
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cadence.fullname" . }}-web
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cadence.componentLabels" (dict "component" "web" "context" $) | nindent 4 }}
+spec:
+  type: {{ .Values.web.service.type }}
+  ports:
+  - name: http
+    port: {{ .Values.web.service.port }}
+    targetPort: http
+    protocol: TCP
+  selector:
+    {{- include "cadence.componentSelectorLabels" (dict "component" "web" "context" $) | nindent 4 }}
+{{- end }}

@@ -1,0 +1,28 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cadence.fullname" . }}-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cadence.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+  {{- with .Values.frontend.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+  - name: rpc
+    port: {{ .Values.frontend.service.port }}
+    targetPort: rpc
+    protocol: TCP
+  - name: metrics
+    port: {{ .Values.prometheus.port }}
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    {{- include "cadence.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+{{- end }}

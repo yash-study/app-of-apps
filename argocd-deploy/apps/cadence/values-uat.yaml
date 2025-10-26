@@ -1,0 +1,96 @@
+# Override values for UAT environment
+# This file references the application repo for the actual Helm chart
+
+# Reference to application repository
+repoURL: https://github.com/your-org/dailytumour-cadence.git
+targetRevision: main
+path: helm/cadence
+
+# Environment-specific overrides
+environment: uat
+cluster: dailytumour-uat-gke
+region: australia-southeast1
+
+# GCP Configuration
+gcp:
+  projectId: focal-psyche-460009-a5
+  
+# MySQL Configuration (from Cloud SQL)
+mysql:
+  host: "10.3.65.5"
+  port: 3306
+  databases:
+    default: "cadence1"
+    visibility: "cadence_visibility1"
+  existingSecret: "cadence-mysql"
+  
+# Node placement
+nodeSelector:
+  workload: cadence
+
+tolerations:
+  - key: "workload"
+    operator: "Equal"
+    value: "cadence"
+    effect: "NoSchedule"
+
+# Service Account
+serviceAccount:
+  create: true
+  name: cadence
+  annotations:
+    iam.gke.io/gcp-service-account: dailytumour-uat-eso@focal-psyche-460009-a5.iam.gserviceaccount.com
+
+# Resource allocation per component
+resources:
+  frontend:
+    replicas: 2
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  
+  history:
+    replicas: 3
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  
+  matching:
+    replicas: 2
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  
+  worker:
+    replicas: 1
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Web UI
+web:
+  enabled: true
+  replicas: 1
+  ingress:
+    enabled: false  # Using Istio VirtualService
+
+# Monitoring
+prometheus:
+  enabled: true
+
+# Logging
+logging:
+  level: info
+  stdout: true

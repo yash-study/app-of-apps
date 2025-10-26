@@ -1,0 +1,231 @@
+# Default values for Cadence Helm Chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## Global Settings
+global:
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+## Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: cadence
+
+## MySQL Configuration
+mysql:
+  enabled: false  # Using external Cloud SQL
+  host: mysql
+  port: 3306
+  databases:
+    default: cadence
+    visibility: cadence_visibility
+  user: cadence
+  existingSecret: cadence-mysql
+  secretKeys:
+    password: password
+    user: user
+    host: host
+    port: port
+
+## Cadence Configuration
+cadence:
+  numHistoryShards: 512
+  logLevel: info
+
+  persistence:
+    default:
+      driver: sql
+      sql:
+        driver: mysql
+        maxConns: 20
+        maxIdleConns: 20
+        maxConnLifetime: 1h
+
+    visibility:
+      driver: sql
+      sql:
+        driver: mysql
+        maxConns: 10
+        maxIdleConns: 10
+        maxConnLifetime: 1h
+
+  clusterMetadata:
+    enableGlobalDomain: false
+    failoverVersionIncrement: 10
+    masterClusterName: active
+    currentClusterName: active
+
+## Frontend Service
+frontend:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7933
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  podAnnotations: {}
+  podLabels: {}
+
+## History Service
+history:
+  enabled: true
+  replicaCount: 3
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7934
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  podAnnotations: {}
+  podLabels: {}
+
+## Matching Service
+matching:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7935
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  podAnnotations: {}
+  podLabels: {}
+
+## Worker Service
+worker:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7939
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  podAnnotations: {}
+  podLabels: {}
+
+## Web UI
+web:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ubercadence/web
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8088
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: cadence.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## Prometheus Metrics
+prometheus:
+  enabled: true
+  port: 9090
+
+## Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

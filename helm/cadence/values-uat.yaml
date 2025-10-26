@@ -1,0 +1,261 @@
+# UAT Environment Overrides
+# These values override defaults from values.yaml for the UAT environment
+# Deployed to: dailytumour-uat-gke cluster in australia-southeast1
+
+# Environment metadata
+environment: uat
+cluster: dailytumour-uat-gke
+region: australia-southeast1
+
+## GCP Configuration
+gcp:
+  projectId: focal-psyche-460009-a5
+  region: australia-southeast1
+  zone: australia-southeast1-a
+
+  # Workload Identity for accessing GCP Secret Manager
+  workloadIdentity:
+    enabled: true
+    serviceAccount: dailytumour-uat-eso@focal-psyche-460009-a5.iam.gserviceaccount.com
+
+## MySQL Configuration (Cloud SQL)
+# Override default MySQL settings for UAT Cloud SQL instance
+mysql:
+  enabled: false  # Using external Cloud SQL
+  host: "10.3.65.5"  # Private IP of Cloud SQL instance
+  port: 3306
+  databases:
+    default: "cadence1"
+    visibility: "cadence_visibility1"
+  user: "cadence"
+  existingSecret: "cadence-mysql"  # Created by External Secrets Operator
+  secretKeys:
+    password: "password"
+    user: "user"
+    host: "host"
+    port: "port"
+
+## Node Placement
+# Schedule all Cadence pods on dedicated node pool with taint
+# This ensures Cadence gets dedicated resources and doesn't interfere with other workloads
+nodeSelector:
+  workload: cadence  # Node must have this label
+
+tolerations:
+  - key: "workload"
+    operator: "Equal"
+    value: "cadence"
+    effect: "NoSchedule"  # Only pods with this toleration can schedule on cadence nodes
+
+## Service Account
+# Enable Workload Identity binding to GCP service account
+serviceAccount:
+  create: true
+  name: cadence
+  annotations:
+    # Binds Kubernetes SA to GCP SA for Secret Manager access
+    iam.gke.io/gcp-service-account: dailytumour-uat-eso@focal-psyche-460009-a5.iam.gserviceaccount.com
+
+## Cadence Configuration Overrides
+cadence:
+  numHistoryShards: 512
+  logLevel: "info"  # Use "debug" for troubleshooting
+
+  persistence:
+    default:
+      driver: "sql"
+      sql:
+        driver: "mysql"
+        maxConns: 20
+        maxIdleConns: 20
+        maxConnLifetime: "1h"
+
+    visibility:
+      driver: "sql"
+      sql:
+        driver: "mysql"
+        maxConns: 10
+        maxIdleConns: 10
+        maxConnLifetime: "1h"
+
+  clusterMetadata:
+    enableGlobalDomain: false
+    failoverVersionIncrement: 10
+    masterClusterName: "active"
+    currentClusterName: "active"
+
+## Frontend Service Overrides
+frontend:
+  enabled: true
+  replicaCount: 2  # 2 replicas for HA in UAT
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7933
+
+  # Resource allocation for UAT
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Use dedicated Cadence nodes
+  nodeSelector:
+    workload: cadence
+
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "cadence"
+      effect: "NoSchedule"
+
+  autoscaling:
+    enabled: false  # Disable autoscaling in UAT, enable in prod if needed
+
+## History Service Overrides
+history:
+  enabled: true
+  replicaCount: 3  # 3 replicas for workflow distribution
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7934
+
+  # History is resource-intensive, allocate more resources
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  nodeSelector:
+    workload: cadence
+
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "cadence"
+      effect: "NoSchedule"
+
+## Matching Service Overrides
+matching:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7935
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  nodeSelector:
+    workload: cadence
+
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "cadence"
+      effect: "NoSchedule"
+
+## Worker Service Overrides
+worker:
+  enabled: true
+  replicaCount: 1  # 1 replica sufficient for UAT
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7939
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  nodeSelector:
+    workload: cadence
+
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "cadence"
+      effect: "NoSchedule"
+
+## Web UI Overrides
+web:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ubercadence/web
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8088
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Ingress disabled - using kubectl port-forward or Istio VirtualService
+  ingress:
+    enabled: false
+
+  nodeSelector:
+    workload: cadence
+
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "cadence"
+      effect: "NoSchedule"
+
+## Prometheus Metrics
+prometheus:
+  enabled: true
+  port: 9090
+
+## Pod Disruption Budget
+# Ensures at least 1 pod available during voluntary disruptions
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

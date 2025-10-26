@@ -1,0 +1,20 @@
+apiVersion: v2
+name: cadence
+description: Uber Cadence Workflow Engine - Distributed, scalable, durable orchestration platform
+type: application
+version: 1.0.0
+appVersion: "0.25.0"
+
+keywords:
+  - cadence
+  - workflow
+  - orchestration
+  - distributed-systems
+
+home: https://cadenceworkflow.io/
+sources:
+  - https://github.com/uber/cadence
+
+maintainers:
+  - name: Platform Team
+    email: platform@dailytumour.com

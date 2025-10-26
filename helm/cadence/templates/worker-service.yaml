@@ -1,0 +1,23 @@
+{{- if .Values.worker.enabled }}
+# Worker Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cadence.fullname" . }}-worker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cadence.componentLabels" (dict "component" "worker" "context" $) | nindent 4 }}
+spec:
+  type: {{ .Values.worker.service.type }}
+  ports:
+  - name: rpc
+    port: {{ .Values.worker.service.port }}
+    targetPort: rpc
+    protocol: TCP
+  - name: metrics
+    port: {{ .Values.prometheus.port }}
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    {{- include "cadence.componentSelectorLabels" (dict "component" "worker" "context" $) | nindent 4 }}
+{{- end }}

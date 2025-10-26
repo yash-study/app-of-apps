@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cadence.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cadence.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    log:
+      stdout: true
+      level: {{ .Values.cadence.logLevel }}
+
+    persistence:
+      defaultStore: default
+      visibilityStore: visibility
+      numHistoryShards: {{ .Values.cadence.numHistoryShards }}
+
+      datastores:
+        default:
+          sql:
+            pluginName: {{ .Values.cadence.persistence.default.sql.driver }}
+            databaseName: {{ include "cadence.mysql.database" . }}
+            connectAddr: {{ include "cadence.mysql.host" . }}:{{ include "cadence.mysql.port" . }}
+            connectProtocol: tcp
+            user: {{ include "cadence.mysql.user" . }}
+            maxConns: {{ .Values.cadence.persistence.default.sql.maxConns }}
+            maxIdleConns: {{ .Values.cadence.persistence.default.sql.maxIdleConns }}
+            maxConnLifetime: {{ .Values.cadence.persistence.default.sql.maxConnLifetime }}
+
+        visibility:
+          sql:
+            pluginName: {{ .Values.cadence.persistence.visibility.sql.driver }}
+            databaseName: {{ include "cadence.mysql.visibilityDatabase" . }}
+            connectAddr: {{ include "cadence.mysql.host" . }}:{{ include "cadence.mysql.port" . }}
+            connectProtocol: tcp
+            user: {{ include "cadence.mysql.user" . }}
+            maxConns: {{ .Values.cadence.persistence.visibility.sql.maxConns }}
+            maxIdleConns: {{ .Values.cadence.persistence.visibility.sql.maxIdleConns }}
+            maxConnLifetime: {{ .Values.cadence.persistence.visibility.sql.maxConnLifetime }}
+
+    clusterMetadata:
+      enableGlobalDomain: {{ .Values.cadence.clusterMetadata.enableGlobalDomain }}
+      failoverVersionIncrement: {{ .Values.cadence.clusterMetadata.failoverVersionIncrement }}
+      masterClusterName: {{ .Values.cadence.clusterMetadata.masterClusterName }}
+      currentClusterName: {{ .Values.cadence.clusterMetadata.currentClusterName }}
+      clusterInformation:
+        {{ .Values.cadence.clusterMetadata.currentClusterName }}:
+          enabled: true
+          initialFailoverVersion: 1
+          rpcName: cadence-frontend
+          rpcAddress: {{ include "cadence.fullname" . }}-frontend:7933
+
+    services:
+      frontend:
+        rpc:
+          port: 7933
+          bindOnLocalHost: false
+        metrics:
+          prometheus:
+            timerType: histogram
+            listenAddress: 0.0.0.0:{{ .Values.prometheus.port }}
+
+      matching:
+        rpc:
+          port: 7935
+          bindOnLocalHost: false
+        metrics:
+          prometheus:
+            timerType: histogram
+            listenAddress: 0.0.0.0:{{ .Values.prometheus.port }}
+
+      history:
+        rpc:
+          port: 7934
+          bindOnLocalHost: false
+        metrics:
+          prometheus:
+            timerType: histogram
+            listenAddress: 0.0.0.0:{{ .Values.prometheus.port }}
+
+      worker:
+        rpc:
+          port: 7939
+          bindOnLocalHost: false
+        metrics:
+          prometheus:
+            timerType: histogram
+            listenAddress: 0.0.0.0:{{ .Values.prometheus.port }}

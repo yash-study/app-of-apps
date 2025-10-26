@@ -1,0 +1,99 @@
+{{- if .Values.matching.enabled }}
+# Matching Deployment
+# The matching service manages task queues and task list matching
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cadence.fullname" . }}-matching
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cadence.componentLabels" (dict "component" "matching" "context" $) | nindent 4 }}
+spec:
+  replicas: {{ .Values.matching.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "cadence.componentSelectorLabels" (dict "component" "matching" "context" $) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.matching.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "cadence.componentSelectorLabels" (dict "component" "matching" "context" $) | nindent 8 }}
+        {{- with .Values.matching.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "cadence.serviceAccountName" . }}
+      {{- with .Values.matching.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.matching.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: matching
+        image: "{{ .Values.matching.image.repository }}:{{ .Values.matching.image.tag }}"
+        imagePullPolicy: {{ .Values.matching.image.pullPolicy }}
+        env:
+        - name: SERVICES
+          value: matching
+        - name: LOG_LEVEL
+          value: {{ .Values.cadence.logLevel }}
+        - name: DYNAMIC_CONFIG_FILE_PATH
+          value: config/dynamicconfig/config.yaml
+        - name: MYSQL_PWD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "cadence.mysql.secretName" . }}
+              key: {{ .Values.mysql.secretKeys.password }}
+        - name: DB
+          value: mysql
+        - name: DB_PORT
+          value: {{ include "cadence.mysql.port" . | quote }}
+        - name: MYSQL_USER
+          value: {{ include "cadence.mysql.user" . }}
+        - name: MYSQL_SEEDS
+          value: {{ include "cadence.mysql.host" . }}
+        - name: KEYSPACE
+          value: {{ include "cadence.mysql.database" . }}
+        - name: VISIBILITY_KEYSPACE
+          value: {{ include "cadence.mysql.visibilityDatabase" . }}
+        - name: PROMETHEUS_ENDPOINT
+          value: 0.0.0.0:{{ .Values.prometheus.port }}
+        ports:
+        - name: rpc
+          containerPort: 7935
+          protocol: TCP
+        - name: metrics
+          containerPort: {{ .Values.prometheus.port }}
+          protocol: TCP
+        livenessProbe:
+          tcpSocket:
+            port: rpc
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: rpc
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.matching.resources | nindent 12 }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/cadence/config/config.yaml
+          subPath: config.yaml
+        - name: dynamicconfig
+          mountPath: /etc/cadence/config/dynamicconfig
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "cadence.fullname" . }}-config
+      - name: dynamicconfig
+        emptyDir: {}
+{{- end }}

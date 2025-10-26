@@ -1,0 +1,24 @@
+# ... existing apps ...
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cadence
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  project: dailytumour-uat
+  source:
+    repoURL: https://github.com/your-org/dailytumour-uat-infrastructure.git
+    targetRevision: main
+    path: argocd-deploy/apps
+    directory:
+      include: cadence.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

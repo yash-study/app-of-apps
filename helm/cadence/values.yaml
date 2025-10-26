@@ -1,0 +1,265 @@
+# Default Values for Cadence Helm Chart
+# This file contains environment-agnostic default values
+# Override these in values-{env}.yaml files for environment-specific configuration
+
+## Global Settings
+global:
+  # Default Cadence server image
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+# Override release name if needed
+nameOverride: ""
+fullnameOverride: ""
+
+## Service Account
+# Kubernetes ServiceAccount for Cadence pods
+# Used for Workload Identity in GKE to access GCP Secret Manager
+serviceAccount:
+  create: true
+  annotations: {}
+  name: cadence
+
+## MySQL Database Configuration
+# Connection details for the MySQL backend
+# Actual credentials come from Kubernetes secret (created by External Secrets Operator)
+mysql:
+  enabled: false  # Set to false when using external Cloud SQL
+  host: mysql     # MySQL hostname or IP (override in values-{env}.yaml)
+  port: 3306
+  databases:
+    default: cadence              # Main Cadence database
+    visibility: cadence_visibility # Visibility database
+  user: cadence
+  existingSecret: cadence-mysql   # Secret name (created by ESO)
+  secretKeys:
+    password: password  # Key name in the secret for password
+    user: user
+    host: host
+    port: port
+
+## Cadence Configuration
+cadence:
+  # Number of history shards (should be power of 2, affects workflow distribution)
+  # Higher = better distribution but more resource usage
+  numHistoryShards: 512
+
+  # Log level: debug, info, warn, error
+  logLevel: info
+
+  # Persistence configuration for MySQL
+  persistence:
+    # Default datastore (for workflow history, domains, tasks)
+    default:
+      driver: sql
+      sql:
+        driver: mysql
+        maxConns: 20          # Max DB connections
+        maxIdleConns: 20      # Max idle connections
+        maxConnLifetime: 1h   # Connection lifetime
+
+    # Visibility datastore (for workflow search/listing)
+    visibility:
+      driver: sql
+      sql:
+        driver: mysql
+        maxConns: 10
+        maxIdleConns: 10
+        maxConnLifetime: 1h
+
+  # Cluster metadata configuration
+  clusterMetadata:
+    enableGlobalDomain: false           # Set true for multi-cluster
+    failoverVersionIncrement: 10
+    masterClusterName: active
+    currentClusterName: active
+
+## Frontend Service
+# Public-facing RPC service for Cadence clients
+frontend:
+  enabled: true
+  replicaCount: 2  # Minimum 2 for HA
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7933
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  podAnnotations: {}
+  podLabels: {}
+
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+## History Service
+# Manages workflow execution history
+# Uses StatefulSet for stable network identity
+history:
+  enabled: true
+  replicaCount: 3  # Should scale with load
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7934
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  podAnnotations: {}
+  podLabels: {}
+
+## Matching Service
+# Manages task queues and task list matching
+matching:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7935
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  podAnnotations: {}
+  podLabels: {}
+
+## Worker Service
+# Background worker for system workflows (archival, replication, etc.)
+worker:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ubercadence/server
+    tag: "0.25.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7939
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  podAnnotations: {}
+  podLabels: {}
+
+## Web UI
+# Cadence Web dashboard for workflow visualization
+web:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: ubercadence/web
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 8088
+    annotations: {}
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Ingress configuration (optional, can use Istio VirtualService instead)
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # cert-manager.io/cluster-issuer: letsencrypt
+    hosts:
+      - host: cadence.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+      # - secretName: cadence-tls
+      #   hosts:
+      #     - cadence.example.com
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## Prometheus Metrics
+# All Cadence components expose Prometheus metrics
+prometheus:
+  enabled: true
+  port: 9090
+
+## Pod Disruption Budget
+# Ensures minimum availability during voluntary disruptions (node drains, etc.)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
