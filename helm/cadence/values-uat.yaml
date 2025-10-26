@@ -82,7 +82,7 @@ cadence:
 ## Frontend Service Overrides
 frontend:
   enabled: true
-  replicaCount: 2  # 2 replicas for HA in UAT
+  replicaCount: 1  # Start with 1 replica due to cluster capacity
 
   image:
     repository: ubercadence/server
@@ -113,7 +113,7 @@ frontend:
 ## History Service Overrides
 history:
   enabled: true
-  replicaCount: 3  # 3 replicas for workflow distribution
+  replicaCount: 1  # Start with 1 replica due to cluster capacity
 
   image:
     repository: ubercadence/server
@@ -146,7 +146,7 @@ history:
 ## Matching Service Overrides
 matching:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1  # Start with 1 replica due to cluster capacity
 
   image:
     repository: ubercadence/server
