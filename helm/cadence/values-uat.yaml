@@ -36,16 +36,11 @@ mysql:
     port: "port"
 
 ## Node Placement
-# Schedule all Cadence pods on dedicated node pool with taint
-# This ensures Cadence gets dedicated resources and doesn't interfere with other workloads
-nodeSelector:
-  workload: cadence  # Node must have this label
+# Disabled - deploy on any available node
+# Enable this if you have dedicated Cadence nodes with workload=cadence label
+nodeSelector: {}
 
-tolerations:
-  - key: "workload"
-    operator: "Equal"
-    value: "cadence"
-    effect: "NoSchedule"  # Only pods with this toleration can schedule on cadence nodes
+tolerations: []
 
 ## Service Account
 # Enable Workload Identity binding to GCP service account
@@ -108,14 +103,9 @@ frontend:
       memory: 1Gi
 
   # Use dedicated Cadence nodes
-  nodeSelector:
-    workload: cadence
+  nodeSelector: {}
 
-  tolerations:
-    - key: "workload"
-      operator: "Equal"
-      value: "cadence"
-      effect: "NoSchedule"
+  tolerations: []
 
   autoscaling:
     enabled: false  # Disable autoscaling in UAT, enable in prod if needed
@@ -143,14 +133,9 @@ history:
       cpu: 2000m
       memory: 2Gi
 
-  nodeSelector:
-    workload: cadence
+  nodeSelector: {}
 
-  tolerations:
-    - key: "workload"
-      operator: "Equal"
-      value: "cadence"
-      effect: "NoSchedule"
+  tolerations: []
 
 ## Matching Service Overrides
 matching:
@@ -174,14 +159,9 @@ matching:
       cpu: 1000m
       memory: 1Gi
 
-  nodeSelector:
-    workload: cadence
+  nodeSelector: {}
 
-  tolerations:
-    - key: "workload"
-      operator: "Equal"
-      value: "cadence"
-      effect: "NoSchedule"
+  tolerations: []
 
 ## Worker Service Overrides
 worker:
@@ -205,14 +185,9 @@ worker:
       cpu: 1000m
       memory: 1Gi
 
-  nodeSelector:
-    workload: cadence
+  nodeSelector: {}
 
-  tolerations:
-    - key: "workload"
-      operator: "Equal"
-      value: "cadence"
-      effect: "NoSchedule"
+  tolerations: []
 
 ## Web UI Overrides
 web:
@@ -240,14 +215,9 @@ web:
   ingress:
     enabled: false
 
-  nodeSelector:
-    workload: cadence
+  nodeSelector: {}
 
-  tolerations:
-    - key: "workload"
-      operator: "Equal"
-      value: "cadence"
-      effect: "NoSchedule"
+  tolerations: []
 
 ## Prometheus Metrics
 prometheus:
