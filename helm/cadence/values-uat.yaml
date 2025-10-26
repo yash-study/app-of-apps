@@ -39,9 +39,9 @@ web:
 
 schema:
   setup:
-    enabled: false  # Databases cadence1 and cadence_visibility1 already initialized
+    enabled: false  # Skip setup - schema_version table already exists
   update:
-    enabled: true
+    enabled: true  # Run schema migrations
     backoffLimit: 100
 
 mysql:
