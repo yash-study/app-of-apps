@@ -11,7 +11,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: dailytumour-uat
+  project: default
   
   source:
     # This points to your APPLICATION repository (using HTTPS for public/private repos)
