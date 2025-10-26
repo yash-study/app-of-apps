@@ -39,8 +39,7 @@ web:
 
 schema:
   setup:
-    enabled: true
-    backoffLimit: 100
+    enabled: false  # Databases cadence1 and cadence_visibility1 already initialized
   update:
     enabled: true
     backoffLimit: 100
