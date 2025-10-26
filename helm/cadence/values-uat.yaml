@@ -133,9 +133,15 @@ history:
       cpu: 2000m
       memory: 2Gi
 
-  nodeSelector: {}
+  # History requires more CPU (500m), schedule on cadence node pool
+  nodeSelector:
+    workload: cadence
 
-  tolerations: []
+  tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "cadence"
+      effect: "NoSchedule"
 
 ## Matching Service Overrides
 matching:
