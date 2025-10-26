@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cadence
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/yash-study/app-of-apps.git
+    targetRevision: main
+    path: helm/cadence
+    helm:
+      releaseName: cadence
+      valueFiles:
+        - values.yaml
+        - values-uat.yaml
+
+  destination:
+    name: dailytumour-uat-gke
+    namespace: cadence-uat
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,23 +1,20 @@
-# UAT Environment Configuration for Cadence
-# Using official Cadence Helm chart v0.24.2
+# Cadence UAT Environment Configuration
+# Chart: cadence-0.24.2 (App: v0.24.0)
 
-# Server configuration
 server:
   image:
     repository: ubercadence/server
     tag: "0.24.0"
     pullPolicy: IfNotPresent
 
-  replicaCount: 1  # Single replica for all services in UAT
+  replicaCount: 1
 
-  # Service Account with Workload Identity
   serviceAccount:
     create: true
     name: cadence
     annotations:
       iam.gke.io/gcp-service-account: "cadence-sa@focal-psyche-460009-a5.iam.gserviceaccount.com"
 
-  # Resource limits
   resources:
     limits:
       cpu: 1000m
@@ -26,7 +23,6 @@ server:
       cpu: 200m
       memory: 512Mi
 
-  # Persistence configuration - MySQL
   config:
     persistence:
       default:
@@ -38,9 +34,6 @@ server:
           database: "cadence1"
           user: "cadence"
           existingSecret: "cadence-mysql"
-          maxConns: 20
-          maxIdleConns: 20
-          maxConnLifetime: "1h"
 
       visibility:
         driver: "sql"
@@ -51,49 +44,25 @@ server:
           database: "cadence_visibility1"
           user: "cadence"
           existingSecret: "cadence-mysql"
-          maxConns: 10
-          maxIdleConns: 10
-          maxConnLifetime: "1h"
 
-# Web UI configuration
 web:
   enabled: true
   replicaCount: 1
-
   image:
     repository: ubercadence/web
     tag: "3.30.2"
     pullPolicy: IfNotPresent
 
-  service:
-    type: ClusterIP
-    port: 8088
-
-# Schema management
 schema:
   setup:
-    enabled: false  # Databases already exist with schema_version tables
+    enabled: true
+    backoffLimit: 100
   update:
     enabled: true
-    backoffLimit: 10
+    backoffLimit: 100
 
-# Disable built-in MySQL (using external Cloud SQL)
 mysql:
   enabled: false
 
-# Disable Cassandra
 cassandra:
   enabled: false
-
-# Enable Prometheus metrics
-prometheus:
-  enabled: false
-
-# Node scheduling - allow History on cadence node pool
-nodeSelector: {}
-
-tolerations:
-  - key: "workload"
-    operator: "Equal"
-    value: "cadence"
-    effect: "NoSchedule"
