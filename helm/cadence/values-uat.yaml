@@ -25,8 +25,8 @@ mysql:
   host: "10.3.65.5"  # Private IP of Cloud SQL instance
   port: 3306
   databases:
-    default: "cadence1"
-    visibility: "cadence_visibility1"
+    default: "cadence"
+    visibility: "cadence_visibility"
   user: "cadence"
   existingSecret: "cadence-mysql"  # Created by External Secrets Operator
   secretKeys:

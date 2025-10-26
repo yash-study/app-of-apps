@@ -29,8 +29,13 @@ spec:
         {{ .Values | toYaml | nindent 8 }}
   
   destination:
-    server: https://kubernetes.default.svc
+    # Option 1: Use cluster name (after registering with ArgoCD)
+    name: dailytumour-uat-gke
     namespace: cadence
+
+    # Option 2: Use cluster API server URL (get from: kubectl cluster-info)
+    # server: https://YOUR_GKE_CLUSTER_API_SERVER
+    # namespace: cadence
   
   syncPolicy:
     automated:
