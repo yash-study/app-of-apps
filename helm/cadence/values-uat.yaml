@@ -1,27 +1,15 @@
-# Cadence UAT Environment Configuration
-# Chart: cadence-0.24.2 (App: v0.24.0)
+# Cadence UAT - Minimal Resource Configuration
 
 server:
-  image:
-    repository: ubercadence/server
-    tag: "0.24.0"
-    pullPolicy: IfNotPresent
-
   replicaCount: 1
-
-  serviceAccount:
-    create: true
-    name: cadence
-    annotations:
-      iam.gke.io/gcp-service-account: "cadence-sa@focal-psyche-460009-a5.iam.gserviceaccount.com"
 
   resources:
     limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
       cpu: 200m
-      memory: 512Mi
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
 
   config:
     persistence:
@@ -48,10 +36,6 @@ server:
 web:
   enabled: true
   replicaCount: 1
-  image:
-    repository: ubercadence/web
-    tag: "3.30.2"
-    pullPolicy: IfNotPresent
 
 schema:
   setup:
