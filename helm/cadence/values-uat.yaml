@@ -1,237 +1,100 @@
-# UAT Environment Overrides
-# These values override defaults from values.yaml for the UAT environment
-# Deployed to: dailytumour-uat-gke cluster in australia-southeast1
+# UAT Environment Configuration for Cadence
+# Using official Cadence Helm chart v0.24.2
 
-# Environment metadata
-environment: uat
-cluster: dailytumour-uat-gke
-region: australia-southeast1
-
-## GCP Configuration
-gcp:
-  projectId: focal-psyche-460009-a5
-  region: australia-southeast1
-  zone: australia-southeast1-a
-
-  # Workload Identity for accessing GCP Secret Manager
-  workloadIdentity:
-    enabled: true
-    serviceAccount: dailytumour-uat-eso@focal-psyche-460009-a5.iam.gserviceaccount.com
-
-## MySQL Configuration (Cloud SQL)
-# Override default MySQL settings for UAT Cloud SQL instance
-mysql:
-  enabled: false  # Using external Cloud SQL
-  host: "10.3.65.5"  # Private IP of Cloud SQL instance
-  port: 3306
-  databases:
-    default: "cadence"
-    visibility: "cadence_visibility"
-  user: "cadence"
-  existingSecret: "cadence-mysql"  # Created by External Secrets Operator
-  secretKeys:
-    password: "password"
-    user: "user"
-    host: "host"
-    port: "port"
-
-## Node Placement
-# Disabled - deploy on any available node
-# Enable this if you have dedicated Cadence nodes with workload=cadence label
-nodeSelector: {}
-
-tolerations: []
-
-## Service Account
-# Enable Workload Identity binding to GCP service account
-serviceAccount:
-  create: true
-  name: cadence
-  annotations:
-    # Binds Kubernetes SA to GCP SA for Secret Manager access
-    iam.gke.io/gcp-service-account: dailytumour-uat-eso@focal-psyche-460009-a5.iam.gserviceaccount.com
-
-## Cadence Configuration Overrides
-cadence:
-  numHistoryShards: 512
-  logLevel: "info"  # Use "debug" for troubleshooting
-
-  persistence:
-    default:
-      driver: "sql"
-      sql:
-        driver: "mysql"
-        maxConns: 20
-        maxIdleConns: 20
-        maxConnLifetime: "1h"
-
-    visibility:
-      driver: "sql"
-      sql:
-        driver: "mysql"
-        maxConns: 10
-        maxIdleConns: 10
-        maxConnLifetime: "1h"
-
-  clusterMetadata:
-    enableGlobalDomain: false
-    failoverVersionIncrement: 10
-    masterClusterName: "active"
-    currentClusterName: "active"
-
-## Frontend Service Overrides
-frontend:
-  enabled: true
-  replicaCount: 1  # Start with 1 replica due to cluster capacity
-
+# Server configuration
+server:
   image:
     repository: ubercadence/server
-    tag: "0.25.0"
+    tag: "0.24.0"
     pullPolicy: IfNotPresent
 
-  service:
-    type: ClusterIP
-    port: 7933
+  replicaCount: 1  # Single replica for all services in UAT
 
-  # Resource allocation for UAT
+  # Service Account with Workload Identity
+  serviceAccount:
+    create: true
+    name: cadence
+    annotations:
+      iam.gke.io/gcp-service-account: "cadence-sa@focal-psyche-460009-a5.iam.gserviceaccount.com"
+
+  # Resource limits
   resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
     limits:
       cpu: 1000m
       memory: 1Gi
-
-  # Use dedicated Cadence nodes
-  nodeSelector: {}
-
-  tolerations: []
-
-  autoscaling:
-    enabled: false  # Disable autoscaling in UAT, enable in prod if needed
-
-## History Service Overrides
-history:
-  enabled: true
-  replicaCount: 1  # Start with 1 replica due to cluster capacity
-
-  image:
-    repository: ubercadence/server
-    tag: "0.25.0"
-    pullPolicy: IfNotPresent
-
-  service:
-    type: ClusterIP
-    port: 7934
-
-  # History is resource-intensive, allocate more resources
-  resources:
-    requests:
-      cpu: 500m
-      memory: 1Gi
-    limits:
-      cpu: 2000m
-      memory: 2Gi
-
-  # History requires more CPU (500m), schedule on cadence node pool
-  nodeSelector:
-    workload: cadence
-
-  tolerations:
-    - key: "workload"
-      operator: "Equal"
-      value: "cadence"
-      effect: "NoSchedule"
-
-## Matching Service Overrides
-matching:
-  enabled: true
-  replicaCount: 1  # Start with 1 replica due to cluster capacity
-
-  image:
-    repository: ubercadence/server
-    tag: "0.25.0"
-    pullPolicy: IfNotPresent
-
-  service:
-    type: ClusterIP
-    port: 7935
-
-  resources:
     requests:
       cpu: 200m
       memory: 512Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi
 
-  nodeSelector: {}
+  # Persistence configuration - MySQL
+  config:
+    persistence:
+      default:
+        driver: "sql"
+        sql:
+          pluginName: "mysql"
+          host: "10.3.65.5"
+          port: 3306
+          database: "cadence"
+          user: "cadence"
+          existingSecret: "cadence-mysql"
+          maxConns: 20
+          maxIdleConns: 20
+          maxConnLifetime: "1h"
 
-  tolerations: []
+      visibility:
+        driver: "sql"
+        sql:
+          pluginName: "mysql"
+          host: "10.3.65.5"
+          port: 3306
+          database: "cadence_visibility"
+          user: "cadence"
+          existingSecret: "cadence-mysql"
+          maxConns: 10
+          maxIdleConns: 10
+          maxConnLifetime: "1h"
 
-## Worker Service Overrides
-worker:
-  enabled: true
-  replicaCount: 1  # 1 replica sufficient for UAT
-
-  image:
-    repository: ubercadence/server
-    tag: "0.25.0"
-    pullPolicy: IfNotPresent
-
-  service:
-    type: ClusterIP
-    port: 7939
-
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-
-  nodeSelector: {}
-
-  tolerations: []
-
-## Web UI Overrides
+# Web UI configuration
 web:
   enabled: true
   replicaCount: 1
 
   image:
     repository: ubercadence/web
-    tag: "latest"
+    tag: "3.30.2"
     pullPolicy: IfNotPresent
 
   service:
     type: ClusterIP
     port: 8088
 
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+# Schema management
+schema:
+  setup:
+    enabled: true
+    backoffLimit: 10
+  update:
+    enabled: true
+    backoffLimit: 10
 
-  # Ingress disabled - using kubectl port-forward or Istio VirtualService
-  ingress:
-    enabled: false
+# Disable built-in MySQL (using external Cloud SQL)
+mysql:
+  enabled: false
 
-  nodeSelector: {}
+# Disable Cassandra
+cassandra:
+  enabled: false
 
-  tolerations: []
-
-## Prometheus Metrics
+# Enable Prometheus metrics
 prometheus:
-  enabled: true
-  port: 9090
+  enabled: false
 
-## Pod Disruption Budget
-# Ensures at least 1 pod available during voluntary disruptions
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
+# Node scheduling - allow History on cadence node pool
+nodeSelector: {}
+
+tolerations:
+  - key: "workload"
+    operator: "Equal"
+    value: "cadence"
+    effect: "NoSchedule"

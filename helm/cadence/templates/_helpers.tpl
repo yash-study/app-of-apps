@@ -1,156 +1,305 @@
-{{/*
-Helm Template Helpers
-These functions are used throughout the templates to generate consistent names and labels
-*/}}
-
+{{/* vim: set filetype=mustache: */}}
 {{/*
 Expand the name of the chart.
-Returns: "cadence" (or override from values.nameOverride)
 */}}
 {{- define "cadence.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 
 {{/*
 Create a default fully qualified app name.
-Returns: "release-name-cadence" or just "release-name" if it contains "cadence"
-Example: If release name is "cadence", returns "cadence"
-         If release name is "my-release", returns "my-release-cadence"
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
 */}}
 {{- define "cadence.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
+{{- if .Values.fullnameOverride -}}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 {{/*
 Create chart name and version as used by the chart label.
-Returns: "cadence-1.0.0"
-Used in: helm.sh/chart label
 */}}
 {{- define "cadence.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create a default fully qualified component name from the full app name and a component name.
+We truncate the full name at 63 - 1 (last dash) - len(component name) chars because some Kubernetes name fields are limited to this (by the DNS naming spec)
+and we want to make sure that the component is included in the name.
+*/}}
+{{- define "cadence.componentname" -}}
+{{- $global := index . 0 -}}
+{{- $component := index . 1 | trimPrefix "-" -}}
+{{- printf "%s-%s" (include "cadence.fullname" $global | trunc (sub 62 (len $component) | int) | trimSuffix "-" ) $component | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Call nested templates.
+Source: https://stackoverflow.com/a/52024583/3027614
+*/}}
+{{- define "call-nested" }}
+{{- $dot := index . 0 }}
+{{- $subchart := index . 1 }}
+{{- $template := index . 2 }}
+{{- include $template (dict "Chart" (dict "Name" $subchart) "Values" (index $dot.Values $subchart) "Release" $dot.Release "Capabilities" $dot.Capabilities) }}
+{{- end }}
+
+{{- define "cadence.frontend.internalGRPCPort" -}}
+7833
+{{- end -}}
+
+{{- define "cadence.frontend.internalPort" -}}
+7933
+{{- end -}}
+
+{{- define "cadence.history.internalGRPCPort" -}}
+7834
+{{- end -}}
+
+{{- define "cadence.history.internalPort" -}}
+7934
+{{- end -}}
+
+{{- define "cadence.matching.internalGRPCPort" -}}
+7835
+{{- end -}}
+
+{{- define "cadence.matching.internalPort" -}}
+7935
+{{- end -}}
+
+{{- define "cadence.worker.internalPort" -}}
+7939
+{{- end -}}
+
+{{- define "cadence.persistence.schema" -}}
+{{- if eq . "default" -}}
+{{- print "cadence" -}}
+{{- else -}}
+{{- print . -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.driver" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.driver -}}
+{{- $storeConfig.driver -}}
+{{- else if $global.Values.cassandra.enabled -}}
+{{- print "cassandra" -}}
+{{- else if $global.Values.mysql.enabled -}}
+{{- print "sql" -}}
+{{- else -}}
+{{- required (printf "Please specify persistence driver for %s store" $store) $storeConfig.driver -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.cassandra.hosts" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.cassandra.hosts -}}
+{{- $storeConfig.cassandra.hosts | join "," -}}
+{{- else if and $global.Values.cassandra.enabled (eq (include "cadence.persistence.driver" (list $global $store)) "cassandra") -}}
+{{- include "cassandra.hosts" $global -}}
+{{- else -}}
+{{- required (printf "Please specify cassandra hosts for %s store" $store) $storeConfig.cassandra.hosts -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.cassandra.port" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.cassandra.port -}}
+{{- $storeConfig.cassandra.port -}}
+{{- else if and $global.Values.cassandra.enabled (eq (include "cadence.persistence.driver" (list $global $store)) "cassandra") -}}
+{{- $global.Values.cassandra.config.ports.cql -}}
+{{- else -}}
+{{- required (printf "Please specify cassandra port for %s store" $store) $storeConfig.cassandra.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.cassandra.secretName" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.cassandra.existingSecret -}}
+{{- $storeConfig.cassandra.existingSecret -}}
+{{- else if $storeConfig.cassandra.password -}}
+{{- include "cadence.componentname" (list $global (printf "%s-store" $store)) -}}
+{{- else -}}
+{{/* Cassandra password is optional, but we will create an empty secret for it */}}
+{{- include "cadence.componentname" (list $global (printf "%s-store" $store)) -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.cassandra.secretKey" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if or $storeConfig.sql.existingSecret $storeConfig.sql.password -}}
+{{- print "password" -}}
+{{- else -}}
+{{/* Cassandra password is optional, but we will create an empty secret for it */}}
+{{- print "password" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.sql.pluginName" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.sql.pluginName -}}
+{{- $storeConfig.sql.pluginName -}}
+{{- else if $global.Values.mysql.enabled -}}
+{{- print "mysql" -}}
+{{- else -}}
+{{- required (printf "Please specify sql plugin for %s store" $store) $storeConfig.sql.host -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.sql.host" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.sql.host -}}
+{{- $storeConfig.sql.host -}}
+{{- else if and $global.Values.mysql.enabled (and (eq (include "cadence.persistence.driver" (list $global $store)) "sql") (eq (include "cadence.persistence.sql.pluginName" (list $global $store)) "mysql")) -}}
+{{- include "mysql.host" $global -}}
+{{- else -}}
+{{- required (printf "Please specify sql host for %s store" $store) $storeConfig.sql.host -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.sql.port" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.sql.port -}}
+{{- $storeConfig.sql.port -}}
+{{- else if and $global.Values.mysql.enabled (and (eq (include "cadence.persistence.driver" (list $global $store)) "sql") (eq (include "cadence.persistence.sql.pluginName" (list $global $store)) "mysql")) -}}
+{{- $global.Values.mysql.service.port -}}
+{{- else -}}
+{{- required (printf "Please specify sql port for %s store" $store) $storeConfig.sql.port -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.sql.user" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.sql.user -}}
+{{- $storeConfig.sql.user -}}
+{{- else if and $global.Values.mysql.enabled (and (eq (include "cadence.persistence.driver" (list $global $store)) "sql") (eq (include "cadence.persistence.sql.pluginName" (list $global $store)) "mysql")) -}}
+{{- $global.Values.mysql.mysqlUser -}}
+{{- else -}}
+{{- required (printf "Please specify sql user for %s store" $store) $storeConfig.sql.user -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.sql.password" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.sql.password -}}
+{{- $storeConfig.sql.password -}}
+{{- else if and $global.Values.mysql.enabled (and (eq (include "cadence.persistence.driver" (list $global $store)) "sql") (eq (include "cadence.persistence.sql.pluginName" (list $global $store)) "mysql")) -}}
+{{- if or $global.Values.schema.setup.enabled $global.Values.schema.update.enabled -}}
+{{- required "Please specify password for MySQL chart" $global.Values.mysql.mysqlPassword -}}
+{{- else -}}
+{{- $global.Values.mysql.mysqlPassword -}}
+{{- end -}}
+{{- else -}}
+{{- required (printf "Please specify sql password for %s store" $store) $storeConfig.sql.password -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.sql.secretName" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if $storeConfig.sql.existingSecret -}}
+{{- $storeConfig.sql.existingSecret -}}
+{{- else if $storeConfig.sql.password -}}
+{{- include "cadence.componentname" (list $global (printf "%s-store" $store)) -}}
+{{- else if and $global.Values.mysql.enabled (and (eq (include "cadence.persistence.driver" (list $global $store)) "sql") (eq (include "cadence.persistence.sql.pluginName" (list $global $store)) "mysql")) -}}
+{{- include "call-nested" (list $global "mysql" "mysql.secretName") -}}
+{{- else -}}
+{{- required (printf "Please specify sql password or existing secret for %s store" $store) $storeConfig.sql.existingSecret -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.sql.secretKey" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- $storeConfig := index $global.Values.server.config.persistence $store -}}
+{{- if or $storeConfig.sql.existingSecret $storeConfig.sql.password -}}
+{{- print "password" -}}
+{{- else if and $global.Values.mysql.enabled (and (eq (include "cadence.persistence.driver" (list $global $store)) "sql") (eq (include "cadence.persistence.sql.pluginName" (list $global $store)) "mysql")) -}}
+{{- print "mysql-password" -}}
+{{- else -}}
+{{- fail (printf "Please specify sql password or existing secret for %s store" $store) -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "cadence.persistence.secretName" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- include (printf "cadence.persistence.%s.secretName" (include "cadence.persistence.driver" (list $global $store))) (list $global $store) -}}
+{{- end -}}
+
+{{- define "cadence.persistence.secretKey" -}}
+{{- $global := index . 0 -}}
+{{- $store := index . 1 -}}
+{{- include (printf "cadence.persistence.%s.secretKey" (include "cadence.persistence.driver" (list $global $store))) (list $global $store) -}}
+{{- end -}}
+
+{{/*
+All Cassandra hosts.
+*/}}
+{{- define "cassandra.hosts" -}}
+{{- range $i := (until (int .Values.cassandra.config.cluster_size)) }}
+{{- $cassandraName := include "call-nested" (list $ "cassandra" "cassandra.fullname") -}}
+{{- printf "%s-%d.%s.%s.svc.cluster.local," $cassandraName $i $cassandraName $.Release.Namespace -}}
+{{- end }}
+{{- end -}}
+
+{{/*
+The first Cassandra host in the stateful set.
+*/}}
+{{- define "cassandra.host" -}}
+{{- $cassandraName := include "call-nested" (list . "cassandra" "cassandra.fullname") -}}
+{{- printf "%s-0.%s.%s.svc.cluster.local" $cassandraName $cassandraName .Release.Namespace -}}
+{{- end -}}
+
+{{/*
+MySQL host.
+*/}}
+{{- define "mysql.host" -}}
+{{- printf "%s.%s.svc.cluster.local" (include "call-nested" (list . "mysql" "mysql.fullname")) .Release.Namespace -}}
+{{- end -}}
+
+{{/*
+Format a string map as a query string.
+*/}}
+{{- define "to-query" }}
+{{- trimSuffix "&" (include "_to-query" .)  }}
 {{- end }}
 
 {{/*
-Common labels applied to all resources
-These labels help with resource management, querying, and ArgoCD tracking
+Format a string map as a query string.
 */}}
-{{- define "cadence.labels" -}}
-helm.sh/chart: {{ include "cadence.chart" . }}
-{{ include "cadence.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
-Selector labels
-These labels are used for pod selection and must be immutable
-Used in: Deployment/StatefulSet selector and Service selector
-*/}}
-{{- define "cadence.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "cadence.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Component-specific labels
-Adds app.kubernetes.io/component label to differentiate services
-Usage: {{ include "cadence.componentLabels" (dict "component" "frontend" "context" $) }}
-*/}}
-{{- define "cadence.componentLabels" -}}
-{{ include "cadence.labels" .context }}
-app.kubernetes.io/component: {{ .component }}
-{{- end }}
-
-{{/*
-Component-specific selector labels
-Usage: {{ include "cadence.componentSelectorLabels" (dict "component" "frontend" "context" $) }}
-*/}}
-{{- define "cadence.componentSelectorLabels" -}}
-{{ include "cadence.selectorLabels" .context }}
-app.kubernetes.io/component: {{ .component }}
-{{- end }}
-
-{{/*
-Service account name
-Returns the name of the ServiceAccount to use
-*/}}
-{{- define "cadence.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "cadence.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-MySQL host
-Returns the MySQL hostname or IP address
-*/}}
-{{- define "cadence.mysql.host" -}}
-{{- .Values.mysql.host }}
-{{- end }}
-
-{{/*
-MySQL port
-Returns the MySQL port as a string
-*/}}
-{{- define "cadence.mysql.port" -}}
-{{- .Values.mysql.port | toString }}
-{{- end }}
-
-{{/*
-MySQL default database name
-Returns the name of the default (main) Cadence database
-*/}}
-{{- define "cadence.mysql.database" -}}
-{{- .Values.mysql.databases.default }}
-{{- end }}
-
-{{/*
-MySQL visibility database name
-Returns the name of the visibility database
-*/}}
-{{- define "cadence.mysql.visibilityDatabase" -}}
-{{- .Values.mysql.databases.visibility }}
-{{- end }}
-
-{{/*
-MySQL user
-Returns the MySQL username
-*/}}
-{{- define "cadence.mysql.user" -}}
-{{- .Values.mysql.user }}
-{{- end }}
-
-{{/*
-MySQL secret name
-Returns the name of the Kubernetes secret containing MySQL credentials
-This secret is created by External Secrets Operator
-*/}}
-{{- define "cadence.mysql.secretName" -}}
-{{- .Values.mysql.existingSecret }}
-{{- end }}
-
-{{/*
-Component image
-Returns the full image path for a component
-Usage: {{ include "cadence.componentImage" (dict "component" .Values.frontend "context" $) }}
-*/}}
-{{- define "cadence.componentImage" -}}
-{{- if .component.image }}
-{{- printf "%s:%s" .component.image.repository .component.image.tag }}
-{{- else }}
-{{- printf "%s:%s" .context.Values.global.image.repository .context.Values.global.image.tag }}
-{{- end }}
+{{- define "_to-query" }}
+{{- range $key, $value := . -}}{{ $key }}={{ $value }}&{{- end -}}
 {{- end }}
