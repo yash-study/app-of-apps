@@ -39,9 +39,9 @@ web:
 
 schema:
   setup:
-    enabled: false  # Skip setup - schema_version table already exists
+    enabled: true  # Fresh empty databases
   update:
-    enabled: true  # Run schema migrations
+    enabled: true
     backoffLimit: 100
 
 mysql:
