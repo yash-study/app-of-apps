@@ -14,8 +14,8 @@ spec:
   project: dailytumour-uat
   
   source:
-    # This points to your APPLICATION repository
-    repoURL: git@github.com:yash-study/app-of-apps.git
+    # This points to your APPLICATION repository (using HTTPS for public/private repos)
+    repoURL: https://github.com/yash-study/app-of-apps.git
     targetRevision: main
     path: helm/cadence
     helm:
