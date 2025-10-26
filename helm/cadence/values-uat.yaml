@@ -72,8 +72,7 @@ web:
 # Schema management
 schema:
   setup:
-    enabled: true
-    backoffLimit: 10
+    enabled: false  # Databases already exist with schema_version tables
   update:
     enabled: true
     backoffLimit: 10
