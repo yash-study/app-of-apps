@@ -23,10 +23,6 @@ spec:
       valueFiles:
         - values.yaml
         - values-uat.yaml
-      # Override specific values from infrastructure repo
-      values: |
-        # Import from infrastructure repo values
-        {{ .Values | toYaml | nindent 8 }}
   
   destination:
     # Use cluster name (registered with ArgoCD)
